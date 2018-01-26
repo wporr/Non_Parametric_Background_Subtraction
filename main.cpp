@@ -20,6 +20,7 @@ int main(int argc, char* argv[]){
 			 << "The first is the path to the directory containing the video.\n"
 			 << "The second is the path to where you would like to write the results.\n"
 			 << "And the last is the number of CPU threads you would like to use\n"
+			 << "Enter 1 for option three if you want the video to be displayed\n"
 			 << "when running the program.\n"
 			 << "Make sure that you are only using videos provided by"
 			 << " the Changedetection.net datasets, \n"

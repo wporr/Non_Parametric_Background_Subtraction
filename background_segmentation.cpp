@@ -85,10 +85,8 @@ string background_segmentation::find_file_name(int curr_frame_num,
 bool background_segmentation::process_frame(Mat frame,
 					   						int curr_frame_num){
 
-	if (frame.empty()){ // exit if we've reached the end
-		cout << "Video has ended\n";
+	if (frame.empty()) // exit if we've reached the end
 		return true;
-	}
 
 	Mat binary = Mat::zeros(rows, cols, CV_8UC1);
 	int fornum = 1;	// counter for light detection function
@@ -136,7 +134,7 @@ bool background_segmentation::process_frame(Mat frame,
 void background_segmentation::display_and_write(Mat frame,
                                                 Mat binary,
                                                 int curr_frame_num){
-	if (curr_frame_num > 0){
+	if (curr_frame_num > 0 && threads == 1){
 		namedWindow("Video: Input", CV_WINDOW_AUTOSIZE);
 		namedWindow("Video: Segmented", CV_WINDOW_AUTOSIZE);
 		imshow("Video: Input", frame);
