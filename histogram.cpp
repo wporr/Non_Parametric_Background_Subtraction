@@ -13,23 +13,27 @@ using namespace cv;
 float Hist::bins = 0;
 int Hist::lookuptable[256];		// increases the fps when compared to just dividing within the vector call
 
-Hist::Hist(int nobins)	// dont call this constructior with any arguments, it will throw.
-{				// we created the default because it made changing the number of bins easier
+Hist::Hist(int nobins){	//Dont call this constructior with any arguments, it will throw.
+						// I created the default because it made changing the number of bins easier
 	bins = nobins;		// while still having the best performance possible
-    binfactor = 256/bins;
+	timesupdated = 0;
+
 	for (int i = 0; i < bins; i++)
-		histogram[i] = 1/bins;
+		hist[i] = 1;
+	binfactor = (256 / bins);
 }
 
-void Hist::updateHist(uchar& intensity)
-{
-	histogram[lookuptable[intensity]] += learningRate;
 
-    for(int i=0; i<bins; i++)
-        histogram[i] /= (1+learningRate);
+void Hist::update_hist(uchar& intensity){
+	hist[lookuptable[intensity]] += 1;
+	timesupdated++;
 }
 
-float Hist::getBinVal(uchar& intensity)
-{
-	return histogram[lookuptable[intensity]];
+
+float Hist::get_bin_val(uchar& intensity){
+	//If there are no stored values, we cannot return anything
+	if (timesupdated == 0)
+		return NULL;
+	//Normalize values
+	return (hist[lookuptable[intensity]] / timesupdated);
 }

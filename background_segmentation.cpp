@@ -16,7 +16,6 @@ background_segmentation::background_segmentation(string vid_path_i,
 	write_path = write_path_i;
 	string first_name = find_file_name(0);
 	Mat frame = imread(vid_path + first_name);
-
 	if (frame.empty()){
 		cout << "Video did not open";
 		return;
@@ -35,16 +34,20 @@ background_segmentation::background_segmentation(string vid_path_i,
 	omp_set_num_threads(threads);
 }
 
+int background_segmentation::get_frame_num(){
+	return frame_num;
+}
+
 void background_segmentation::run_video(){
 
 	int end = true;
+
 	do {
 		#pragma omp parallel
 		{
 			int curr_frame_num = frame_num + omp_get_thread_num();
 			string file_name = find_file_name(curr_frame_num);
 			Mat frame = imread(vid_path + file_name);
-
 			end = process_frame(frame, curr_frame_num);
 		}
 		frame_num += threads;
@@ -72,7 +75,8 @@ string background_segmentation::find_file_name(int curr_frame_num,
 	for (int i = 0; i < o_num; i++)
 		file_name += '0';
 
-	file_name += to_string(curr_frame_num + 1) + ".jpg";
+	file_name += to_string(curr_frame_num + 1);
+	file_name = (mode == 'r') ? file_name + ".jpg": file_name;
 
 	return file_name;
 }
@@ -81,12 +85,13 @@ string background_segmentation::find_file_name(int curr_frame_num,
 bool background_segmentation::process_frame(Mat frame,
 					   						int curr_frame_num){
 
-	if (frame.empty()) // exit if we've reached the end
+	if (frame.empty()){ // exit if we've reached the end
+		cout << "Video has ended\n";
 		return true;
+	}
 
 	Mat binary = Mat::zeros(rows, cols, CV_8UC1);
 	int fornum = 1;	// counter for light detection function
-
 
 	uchar* frameptr = frame.ptr<uchar>(0);		// the mat objects are continuous, so we only need
 	uchar* bwptr = binary.ptr<uchar>(0);	// a pointer to the first row, saving some computation
@@ -94,10 +99,9 @@ bool background_segmentation::process_frame(Mat frame,
 	//Main processing loop which sorts through each frame pixel
 	for (int i = 0; i < (total_p * 3); i += 3){
 		if (curr_frame_num > 0){
-			double probability = histarr[i].getBinVal(frameptr[i]) *
-				histarr[i + 1].getBinVal(frameptr[i + 1]) *	// weights associated with the three channels
-				histarr[i + 2].getBinVal(frameptr[i + 2]);	// and used to convert to binary
-
+			double probability = histarr[i].get_bin_val(frameptr[i]) *
+				histarr[i + 1].get_bin_val(frameptr[i + 1]) *	// weights associated with the three channels
+				histarr[i + 2].get_bin_val(frameptr[i + 2]);	// and used to convert to binary
 			if (probability < threashold){ //current probability threashold set as a parameter
 				//If the probability of being a background pixel is below the threashold,
 				// then we set the pixel as a foreground pixel
@@ -107,13 +111,12 @@ bool background_segmentation::process_frame(Mat frame,
 
 		}
 		//Update the histograms
-		if (curr_frame_num % update_interval == 0){
-			histarr[i].updateHist(frameptr[i]);
-			histarr[i + 1].updateHist(frameptr[i + 1]);
-			histarr[i + 2].updateHist(frameptr[i + 2]);
+		if ((curr_frame_num % update_interval) == 0){
+			histarr[i].update_hist(frameptr[i]);
+			histarr[i + 1].update_hist(frameptr[i + 1]);
+			histarr[i + 2].update_hist(frameptr[i + 2]);
 		}
 	}
-
 
 	//Clear the histograms when there is too much foreground
 	// (likely due to a lighting change) and start over
@@ -138,6 +141,7 @@ void background_segmentation::display_and_write(Mat frame,
 		namedWindow("Video: Segmented", CV_WINDOW_AUTOSIZE);
 		imshow("Video: Input", frame);
 		imshow("Video: Segmented", binary);
+		waitKey(3);
 	}
 	string file_name = find_file_name(curr_frame_num, 'w');
 	imwrite(write_path + file_name + ".jpg", binary);
@@ -193,8 +197,8 @@ void background_segmentation::light_change(Mat& frame)
 	uchar* frameptr = frame.ptr<uchar>(0);
 	for (int count = 0; count < (frame.rows * frame.cols * 3); count++)
 	{
-		histarr[count].clearHist();
-		histarr[count].updateHist(frameptr[count]);
+		histarr[count].clear_hist();
+		histarr[count].update_hist(frameptr[count]);
 	}
 
 	return;
@@ -293,16 +297,16 @@ void background_segmentation::detect_ghost(Mat binary,
 			for (int count = up; count < down; count++){
 				for (int i = left; i < right; i++){
 					if (binptr[(count * frame.cols) + i] == 255){
-						histarr[(count * frame.cols * 3) + (i * 3)].clearHist();
-						histarr[(count * frame.cols * 3) + (i * 3) + 1].clearHist();
-						histarr[(count * frame.cols * 3) + (i * 3) + 2].clearHist();
+						histarr[(count * frame.cols * 3) + (i * 3)].clear_hist();
+						histarr[(count * frame.cols * 3) + (i * 3) + 1].clear_hist();
+						histarr[(count * frame.cols * 3) + (i * 3) + 2].clear_hist();
 
 						histarr[(count * frame.cols * 3) + (i * 3)].
-							updateHist(frameptr[(count * frame.cols * 3) + (i * 3)]);
+							update_hist(frameptr[(count * frame.cols * 3) + (i * 3)]);
 						histarr[(count * frame.cols * 3) + (i * 3) + 1].
-							updateHist(frameptr[(count * frame.cols * 3) + (i * 3) + 1]);
+							update_hist(frameptr[(count * frame.cols * 3) + (i * 3) + 1]);
 						histarr[(count * frame.cols * 3) + (i * 3) + 2].
-							updateHist(frameptr[(count * frame.cols * 3) + (i * 3) + 2]);
+							update_hist(frameptr[(count * frame.cols * 3) + (i * 3) + 2]);
 					}
 				}
 			}

@@ -37,6 +37,7 @@ private:
 
 public:
 	background_segmentation(string, string, int);
+	int get_frame_num();
 	void run_video();
 	string find_file_name(int, char = 'r');
 	bool process_frame(Mat, int);
